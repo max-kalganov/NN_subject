@@ -67,5 +67,4 @@ def show_datasets():
 
 
 if __name__ == '__main__':
-    gen_and_save_datasets()
     show_datasets()

@@ -167,9 +167,6 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
     x_train = x_train.astype(np.float64)
     x_test = x_test.astype(np.float64)
 
-    #x_train, y_train = add_clear(x_train, y_train, sample_size=int((x_train.shape[0]/10) // 4), border=50)
-    #x_test, y_test = add_clear(x_test, y_test, sample_size=100, border=150)
-
     # x_train, y_train = add_clear(x_train, y_train, sample_size=int((x_train.shape[0]/10) // 4), border=5)
     # x_test, y_test = add_clear(x_test, y_test, sample_size=100, border=5)
 
@@ -184,8 +181,8 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
     x_train /= 255
     x_test /= 255
 
-    extra_x_train, extra_y_train = add_external()
-    x_train, y_train = np.vstack([x_train, extra_x_train]), np.concatenate([y_train, extra_y_train])
+    # extra_x_train, extra_y_train = add_external()
+    # x_train, y_train = np.vstack([x_train, extra_x_train]), np.concatenate([y_train, extra_y_train])
 
     # full_x = None
     # full_y = None

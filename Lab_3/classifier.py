@@ -1,27 +1,51 @@
+from os.path import join
 
 import pandas as pd
-from keras import Sequential
-from keras.models import load_model
-from keras.layers import Dense
+from tensorflow.keras import Sequential
+from tensorflow.keras.models import load_model
+from tensorflow.keras.layers import Dense
 from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot as plt
 import numpy as np
 from utils import get_dataset
+# import TensorBoard as tb
+from tensorboard.program import TensorBoard
 
 
 class BinClassifier:
     def __init__(self):
         self.classif = Sequential()
 
+        self.classif.add(Dense(28*28,
+                               activation='relu',
+                               kernel_initializer='random_normal',
+                               input_dim=28 * 28,
+                               name='features1'))
+
         self.classif.add(Dense(10,
                                activation='sigmoid',
                                kernel_initializer='random_normal',
-                               input_dim=28*28))
+                               input_dim=28*28,
+                               name='features'))
 
         self.classif.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    def train(self, x_train, y_train):
-        self.classif.fit(x_train, y_train, batch_size=1000, epochs=500, shuffle=True)
+    def train(self, x_train, y_train, x_test, y_test):
+        batch_size = 1000
+        # with open(join('.logs', 'metadata.tsv'), 'w') as f:
+        #     np.savetxt(f, y_test)
+
+        # tensorboard = TensorBoard(batch_size=batch_size,
+        #                           embeddings_freq=1,
+        #                           embeddings_layer_names=['features'],
+        #                           embeddings_metadata='metadata.tsv')
+
+        self.classif.fit(x_train,
+                         y_train,
+                         batch_size=batch_size,
+                         epochs=100,
+                         # callbacks=[tensorboard],
+                         shuffle=True)
         return self.classif.evaluate(x_train, y_train)
 
     def test(self, x_test):
@@ -51,10 +75,12 @@ def test(binclassif, x_test, y_test):
 def train_and_test():
     (x_train, y_train), (x_test, y_test) = get_dataset()
     binclassif = BinClassifier()
-    loss, acc = binclassif.train(x_train, y_train)
+    loss, acc = binclassif.train(x_train, y_train, x_test, y_test)
+
     print(f"\ntraining results for dataset:\nloss = {loss}\naccuracy = {acc}\n")
-    test(binclassif, x_test, y_test)
     binclassif.save()
+
+    test(binclassif, x_test, y_test)
 
 
 if __name__ == '__main__':

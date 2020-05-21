@@ -12,11 +12,12 @@ def check_classifier(with_external_picture: bool):
         (x_train, y_train), (x_test, y_test) = get_dataset()
         test(bc, x_test, y_test)
     else:
-        image = imread(fname='data/pict5_2.png', as_gray=True)
+        image = imread(fname='data/pict4.png', as_gray=True)
         # image = image*255
         pred = bc.test(image.reshape(1, image.shape[0] * image.shape[1]))
         res = np.argmax(pred)
         print(f"number - {res}")
+        print(res)
 
 
 if __name__ == '__main__':

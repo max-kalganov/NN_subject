@@ -1,3 +1,5 @@
+from collections import Callable
+
 from keras.datasets import mnist
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import OneHotEncoder
@@ -16,6 +18,13 @@ def get_dataset():
     def reshape_x(x):
         return x.reshape(x.shape[0], x.shape[1]*x.shape[2])
 
+    def test_x(x) -> bool:
+        return x[x.sum(1) < 1].shape[0] == 0
+
+    def test_y(y) -> bool:
+        sums = y.sum(0)
+        return np.abs(np.mean(sums) - sums).max() <= 1000
+
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     (x_train, y_train), (x_test, y_test) = preproc_and_expand_dataset(x_train, y_train, x_test, y_test)
 
@@ -23,6 +32,11 @@ def get_dataset():
     reshaped_x_test = reshape_x(x_test)
     one_hot_y_train = one_hot_encoding(y_train)
     one_hot_y_test = one_hot_encoding(y_test)
+
+    assert test_x(reshaped_x_train), f"error in x train"
+    assert test_x(reshaped_x_test), f"error in x test"
+    assert test_y(one_hot_y_train), f"error in y train"
+    assert test_y(one_hot_y_test), f"error in y test"
 
     return (reshaped_x_train, one_hot_y_train),\
            (reshaped_x_test, one_hot_y_test)
@@ -47,53 +61,80 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
             prev = reshaped_new
         return prev
 
-    def add_blurred(x: np.array, y: np.array):
-        def gaussian_with_params(image):
-            return gaussian(image,
-                            sigma=(1.5, 1.5),
-                            truncate=3.5,
-                            multichannel=False)
-        blurred_x = None
-        blurred_y = None
-        sample_size = 100
+    def gaussian_with_params(image):
+        return gaussian(image,
+                        sigma=(1.5, 1.5),
+                        truncate=3.5,
+                        multichannel=False)
+
+    def apply(x: np.array, y: np.array, func: Callable, sample_size: int = 100):
+        full_x = None
+        full_y = None
         for i in range(10):
             x_selected = x[y == i]
             x_indices = np.random.choice(x_selected.shape[0], sample_size)
             x_selected = x_selected[x_indices]
-            x_blurred = None
+            x_applied = None
             for j in range(x_selected.shape[0]):
-                x_blurred = concat_x(x_blurred,
-                                     gaussian_with_params(x_selected[j, :, :]),
+                x_applied = concat_x(x_applied,
+                                     func(x_selected[j, :, :])*255,
                                      reshape_new=True)
 
-            blurred_x = concat_x(blurred_x, x_blurred, False)
-            blurred_y = concat_y(blurred_y, sample_size, i)
+            full_x = concat_x(full_x, x_applied, False)
+            full_y = concat_y(full_y, sample_size, i)
 
-        return np.vstack([x, blurred_x]), np.concatenate([y, blurred_y])
+        return np.vstack([x, full_x]), np.concatenate([y, full_y])
 
-    def add_clear(x: np.array, y: np.array):
+    def add_clear(x: np.array, y: np.array, sample_size: int = 1000, border: int = 50):
         clear_x = None
         clear_y = None
-        sample_size = 1000
         for i in range(10):
             x_selected = x[y == i]
             x_indices = np.random.choice(x_selected.shape[0], sample_size)
             x_selected = x_selected[x_indices]
-            x_selected[x_selected <= 50] = 0
-            x_selected[x_selected > 50] = 255
+
+            x_selected[x_selected <= border] = 0
+            x_selected[x_selected > border] = 255
 
             clear_x = concat_x(clear_x, x_selected, False)
             clear_y = concat_y(clear_y, sample_size, i)
 
         return np.vstack([x, clear_x]), np.concatenate([y, clear_y])
 
+    def shift(image):
+        def get_width_height(height: bool):
+            colored_lines = (image/1.5 < 50).sum(int(height))
+            colored_positions = np.where(colored_lines > 0)[0]
+            if colored_positions.shape[0] <= 0:
+                print("wrong image")
+                display_picture(image)
+                return None, None, None
+            return colored_positions[-1] - colored_positions[0], colored_positions[0], colored_positions[-1]
+
+        width, start_w, end_w = get_width_height(height=False)
+        height, start_h, end_h = get_width_height(height=True)
+        if width is None or height is None:
+            return image
+
+        new_image = np.ones((28, 28)) * 255
+        start_x = np.random.randint(0, 28-width)
+        start_y = np.random.randint(0, 28-height)
+        new_image[start_x:start_x+width, start_y:start_y+height] = image[start_w:end_w, start_h:end_h]
+        return new_image
+
     x_train, x_test = 255 - x_train, 255 - x_test
 
-    x_train, y_train = add_blurred(x_train, y_train)
-    x_test, y_test = add_blurred(x_test, y_test)
+    x_train, y_train = add_clear(x_train, y_train, sample_size=int((x_train.shape[0]/10) // 4), border=50)
+    x_test, y_test = add_clear(x_test, y_test, sample_size=100, border=150)
 
-    x_train, y_train = add_clear(x_train, y_train)
-    x_test, y_test = add_clear(x_test, y_test)
+    # x_train, y_train = add_clear(x_train, y_train, sample_size=int((x_train.shape[0]/10) // 4), border=5)
+    # x_test, y_test = add_clear(x_test, y_test, sample_size=100, border=5)
+
+    # x_train, y_train = apply(x_train, y_train, gaussian_with_params, sample_size=int((x_train.shape[0]/10) // 4))
+    # x_test, y_test = apply(x_test, y_test, gaussian_with_params, sample_size=100)
+
+    x_train, y_train = apply(x_train, y_train, shift, sample_size=int((x_train.shape[0] / 10) // 2))
+    x_test, y_test = apply(x_test, y_test, shift, sample_size=100)
 
     x_train /= 255
     x_test /= 255
@@ -104,6 +145,15 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
 def display_picture(pixels):
     plt.imshow(pixels, cmap='gray')
     plt.show()
+
+
+def display_sample(x: np.array, y: np.array, sample_size: int):
+    for i in range(10):
+        x_selected = x[y == i]
+        x_indices = np.random.choice(x_selected.shape[0], sample_size)
+        x_selected = x_selected[x_indices]
+        for pict in x_selected[:]:
+            display_picture(pict.reshape(28, 28))
 
 
 if __name__ == '__main__':

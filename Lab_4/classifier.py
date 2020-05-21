@@ -1,37 +1,47 @@
 from os.path import join
 
 import pandas as pd
+from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras import Sequential
 from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import Dense
 from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot as plt
 import numpy as np
-from utils import get_dataset
 # import TensorBoard as tb
 from tensorboard.program import TensorBoard
 
+from data_generation import get_input_timeseries
 
-class BinClassifier:
+
+class Classifier:
     def __init__(self):
         self.classif = Sequential()
 
-        self.classif.add(Dense(28*28,
-                               activation='relu',
-                               kernel_initializer='random_normal',
-                               input_dim=28 * 28,
-                               name='features1'))
-
-        self.classif.add(Dense(10,
+        self.classif.add(Dense(20,
                                activation='sigmoid',
                                kernel_initializer='random_normal',
-                               input_dim=28*28,
-                               name='features'))
+                               input_dim=1))
 
-        self.classif.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        self.classif.add(Dense(20,
+                               activation='sigmoid',
+                               kernel_initializer='random_normal',
+                               input_dim=20))
+
+        self.classif.add(Dense(20,
+                               activation='sigmoid',
+                               kernel_initializer='random_normal',
+                               input_dim=20))
+
+        self.classif.add(Dense(1,
+                               activation='relu',
+                               kernel_initializer='random_normal',
+                               input_dim=20))
+
+        self.classif.compile(optimizer='adam', loss=MeanSquaredError(), metrics=['accuracy'])
 
     def train(self, x_train, y_train):
-        batch_size = 1000
+        batch_size = 10
 
         self.classif.fit(x_train,
                          y_train,
@@ -40,9 +50,9 @@ class BinClassifier:
                          shuffle=True)
         return self.classif.evaluate(x_train, y_train)
 
-    def test(self, x_test, full_return: bool = False):
+    def test(self, x_test):
         y_pred = self.classif.predict(x_test)
-        return y_pred if full_return else np.maximum(y_pred-0.5, 0)
+        return y_pred
 
     def save(self):
         self.classif.save('data/classifier.h5')
@@ -53,8 +63,8 @@ class BinClassifier:
         print("classifier is loaded")
 
 
-def test(binclassif: BinClassifier, x_test, y_test):
-    y_pred = binclassif.test(x_test)
+def test(classif: Classifier, x_test, y_test):
+    y_pred = classif.test(x_test)
     cm = confusion_matrix(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))
     t_pos = cm[0, 0]
     t_neg = cm[1, 1]
@@ -64,15 +74,30 @@ def test(binclassif: BinClassifier, x_test, y_test):
     print(f"test accuracy = {test_acc}")
 
 
+def get_dataset():
+    y = get_input_timeseries(100)
+    t = np.arange(100*100 + 1)
+    train_size = int(0.7 * y.shape[0])
+    indices = np.random.choice(t.shape[0], train_size)
+    x_train, y_train = t[indices], y[indices]
+    x_test = t[np.invert(np.isin(t, indices))]
+    y_test = y[x_test]
+
+    return (x_train, y_train), (x_test, y_test)
+    # return (x_train.reshape(x_train.shape[0], 1), y_train.reshape(y_train.shape[0], 1)), \
+    #        (x_test.reshape(x_test.shape[0], 1), y_test.reshape(y_test.shape[0], 1))
+
+
+
 def train_and_test():
     (x_train, y_train), (x_test, y_test) = get_dataset()
-    binclassif = BinClassifier()
-    loss, acc = binclassif.train(x_train, y_train)
+    classif = Classifier()
+    loss, acc = classif.train(x_train, y_train)
 
     print(f"\ntraining results for dataset:\nloss = {loss}\naccuracy = {acc}\n")
-    binclassif.save()
+    classif.save()
 
-    test(binclassif, x_test, y_test)
+    test(classif, x_test, y_test)
 
 
 if __name__ == '__main__':

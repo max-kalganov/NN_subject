@@ -15,7 +15,7 @@ def get_input_timeseries(num_of_timesteps: int) -> np.array:
     beta = 1 + ksi
 
     y = np.random.random(1)
-    for t in range(1, num_of_timesteps):
+    for t in range(1, num_of_timesteps + 1):
         y = np.concatenate([y, func(y[-1], alpha=alpha, beta=beta, t=t)])
 
     return y

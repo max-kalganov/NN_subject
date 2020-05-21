@@ -103,7 +103,7 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
 
     def shift(image):
         def get_width_height(height: bool):
-            colored_lines = (image/1.5 < 50).sum(int(height))
+            colored_lines = (image < 50).sum(int(height))
             colored_positions = np.where(colored_lines > 0)[0]
             if colored_positions.shape[0] <= 0:
                 print("wrong image")
@@ -119,13 +119,17 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
         new_image = np.ones((28, 28)) * 255
         start_x = np.random.randint(0, 28-width)
         start_y = np.random.randint(0, 28-height)
-        new_image[start_x:start_x+width, start_y:start_y+height] = image[start_w:end_w, start_h:end_h]
+        new_image[start_x:start_x+width+1, start_y:start_y+height+1] = image[start_w:end_w+1, start_h:end_h+1]
         return new_image
 
     x_train, x_test = 255 - x_train, 255 - x_test
+    x_train[x_train < 255] = 0
+    x_test[x_test < 255] = 0
+    x_train = x_train.astype(np.float64)
+    x_test = x_test.astype(np.float64)
 
-    x_train, y_train = add_clear(x_train, y_train, sample_size=int((x_train.shape[0]/10) // 4), border=50)
-    x_test, y_test = add_clear(x_test, y_test, sample_size=100, border=150)
+    #x_train, y_train = add_clear(x_train, y_train, sample_size=int((x_train.shape[0]/10) // 4), border=50)
+    #x_test, y_test = add_clear(x_test, y_test, sample_size=100, border=150)
 
     # x_train, y_train = add_clear(x_train, y_train, sample_size=int((x_train.shape[0]/10) // 4), border=5)
     # x_test, y_test = add_clear(x_test, y_test, sample_size=100, border=5)
@@ -136,8 +140,28 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
     x_train, y_train = apply(x_train, y_train, shift, sample_size=int((x_train.shape[0] / 10) // 2))
     x_test, y_test = apply(x_test, y_test, shift, sample_size=100)
 
+
+
     x_train /= 255
     x_test /= 255
+
+    # full_x = None
+    # full_y = None
+    # size = np.min([np.sum(y_train == i) for i in range(10)])
+    # for i in range(10):
+    #     x_selected = x_train[y_train == i]
+    #     x_indices = np.random.choice(x_selected.shape[0], size)
+    #     full_x = concat_x(full_x, x_selected[x_indices], False)
+    #     full_y = concat_y(full_y, size, i)
+    #
+    # x_train = full_x
+    # y_train = full_y
+    error_ex_train = x_train[np.sum(x_train.reshape(x_train.shape[0], x_train.shape[1] * x_train.shape[2]), axis=1) > 750]
+    error_ex_test = x_test[np.sum(x_test.reshape(x_test.shape[0], x_test.shape[1] * x_test.shape[2]), axis=1) > 750]
+    if len(error_ex_train) > 0:
+        print("error in train")
+    if len(error_ex_test) > 0:
+        print("error in train")
 
     return (x_train, y_train), (x_test, y_test)
 

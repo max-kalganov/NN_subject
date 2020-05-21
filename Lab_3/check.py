@@ -25,4 +25,4 @@ def check_classifier(with_external_picture: bool):
 
 
 if __name__ == '__main__':
-    check_classifier(with_external_picture=False)
+    check_classifier(with_external_picture=True)

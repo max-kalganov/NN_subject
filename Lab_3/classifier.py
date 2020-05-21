@@ -36,7 +36,7 @@ class BinClassifier:
         self.classif.fit(x_train,
                          y_train,
                          batch_size=batch_size,
-                         epochs=50,
+                         epochs=100,
                          shuffle=True)
         return self.classif.evaluate(x_train, y_train)
 

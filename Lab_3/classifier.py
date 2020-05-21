@@ -30,27 +30,19 @@ class BinClassifier:
 
         self.classif.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    def train(self, x_train, y_train, x_test, y_test):
+    def train(self, x_train, y_train):
         batch_size = 1000
-        # with open(join('.logs', 'metadata.tsv'), 'w') as f:
-        #     np.savetxt(f, y_test)
-
-        # tensorboard = TensorBoard(batch_size=batch_size,
-        #                           embeddings_freq=1,
-        #                           embeddings_layer_names=['features'],
-        #                           embeddings_metadata='metadata.tsv')
 
         self.classif.fit(x_train,
                          y_train,
                          batch_size=batch_size,
-                         epochs=100,
-                         # callbacks=[tensorboard],
+                         epochs=50,
                          shuffle=True)
         return self.classif.evaluate(x_train, y_train)
 
-    def test(self, x_test):
+    def test(self, x_test, full_return: bool = False):
         y_pred = self.classif.predict(x_test)
-        return y_pred > 0.5
+        return y_pred if full_return else np.maximum(y_pred-0.5, 0)
 
     def save(self):
         self.classif.save('data/classifier.h5')
@@ -61,7 +53,7 @@ class BinClassifier:
         print("classifier is loaded")
 
 
-def test(binclassif, x_test, y_test):
+def test(binclassif: BinClassifier, x_test, y_test):
     y_pred = binclassif.test(x_test)
     cm = confusion_matrix(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))
     t_pos = cm[0, 0]
@@ -75,7 +67,7 @@ def test(binclassif, x_test, y_test):
 def train_and_test():
     (x_train, y_train), (x_test, y_test) = get_dataset()
     binclassif = BinClassifier()
-    loss, acc = binclassif.train(x_train, y_train, x_test, y_test)
+    loss, acc = binclassif.train(x_train, y_train)
 
     print(f"\ntraining results for dataset:\nloss = {loss}\naccuracy = {acc}\n")
     binclassif.save()

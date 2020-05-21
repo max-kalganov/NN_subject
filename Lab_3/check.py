@@ -1,7 +1,15 @@
 from classifier import BinClassifier, test
-from utils import get_dataset
+from utils import get_dataset, EXAMPLE_NAMES, EXAMPLE_ANSWERS
 from skimage.io import imread
 import numpy as np
+
+
+def test_all_local(bc: BinClassifier, full_res: bool):
+    for name, res in zip(EXAMPLE_NAMES, EXAMPLE_ANSWERS):
+        pred, cur_res = test_local(bc, name, full_res)
+        if full_res:
+            print(f"prediction = {pred}")
+        print(f"current result = {cur_res}, real answer = {res} --- {cur_res == res} filename = {name}")
 
 
 def test_local(bc: BinClassifier, pict_name: str, full_res: bool):
@@ -9,8 +17,7 @@ def test_local(bc: BinClassifier, pict_name: str, full_res: bool):
     # image = image*255
     pred = bc.test(image.reshape(1, image.shape[0] * image.shape[1]), full_return=full_res)
     res = np.argmax(pred)
-    print(f"number - {res}")
-    print(f"pred = {pred}")
+    return pred, res
 
 
 def check_classifier(with_external_picture: bool):
@@ -21,7 +28,7 @@ def check_classifier(with_external_picture: bool):
         (x_train, y_train), (x_test, y_test) = get_dataset()
         test(bc, x_test, y_test)
     else:
-        test_local(bc, pict_name="test_pict1", full_res=False)
+        test_all_local(bc, full_res=False)
 
 
 if __name__ == '__main__':

@@ -48,8 +48,8 @@ class BinClassifier:
         self.classif.save('data/classifier.h5')
         print("classifier is saved")
 
-    def load(self):
-        self.classif = load_model('data/classifier.h5')
+    def load(self, classifier_name: str = 'classifier'):
+        self.classif = load_model(f'data/{classifier_name}.h5')
         print("classifier is loaded")
 
 

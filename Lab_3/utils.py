@@ -5,6 +5,37 @@ from matplotlib import pyplot as plt
 from sklearn.preprocessing import OneHotEncoder
 from skimage.filters import gaussian
 import numpy as np
+from skimage.io import imread
+
+EXAMPLE_NAMES = [
+            "pict",
+            "pict0",
+            "pict0_2",
+            "pict0_3",
+            "pict2",
+            "pict3",
+            "pict3_2",
+            "pict3_3",
+            "pict4",
+            "pict4_2",
+            "pict4_3",
+            "pict5",
+            "pict5_2",
+            "pict6",
+            "pict6_2",
+            "pict6_3",
+            "pict8",
+            "pict8_2",
+            "pict8_3",
+            "pict9",
+            "pict9_2",
+            "pict9_3",
+            "test_pict",
+            "test_pict1",
+            "test_pict2",
+            "test_pict3"
+        ]
+EXAMPLE_ANSWERS = np.array([1, 0, 0, 0, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 7, 1, 7, 7])
 
 
 def one_hot_encoding(y):
@@ -102,25 +133,33 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
         return np.vstack([x, clear_x]), np.concatenate([y, clear_y])
 
     def shift(image):
-        def get_width_height(height: bool):
-            colored_lines = (image < 50).sum(int(height))
+        def get_width_height(width: bool):
+            colored_lines = (image < 50).sum(int(width))
             colored_positions = np.where(colored_lines > 0)[0]
             if colored_positions.shape[0] <= 0:
                 print("wrong image")
                 display_picture(image)
                 return None, None, None
-            return colored_positions[-1] - colored_positions[0], colored_positions[0], colored_positions[-1]
+            return colored_positions[-1] - colored_positions[0] + 1, colored_positions[0], colored_positions[-1]
 
-        width, start_w, end_w = get_width_height(height=False)
-        height, start_h, end_h = get_width_height(height=True)
+        width, start_w, end_w = get_width_height(width=True)
+        height, start_h, end_h = get_width_height(width=False)
         if width is None or height is None:
+            print("Error")
             return image
 
         new_image = np.ones((28, 28)) * 255
         start_x = np.random.randint(0, 28-width)
         start_y = np.random.randint(0, 28-height)
-        new_image[start_x:start_x+width+1, start_y:start_y+height+1] = image[start_w:end_w+1, start_h:end_h+1]
+        new_image[start_x:start_x+width, start_y:start_y+height] = image[start_w:end_w+1, start_h:end_h+1]
         return new_image
+
+    def add_external():
+        pictures = None
+        for name in EXAMPLE_NAMES:
+            pictures = concat_x(pictures, imread(fname=f'data/{name}.png', as_gray=True), True)
+
+        return pictures, EXAMPLE_ANSWERS
 
     x_train, x_test = 255 - x_train, 255 - x_test
     x_train[x_train < 255] = 0
@@ -144,6 +183,9 @@ def preproc_and_expand_dataset(x_train, y_train, x_test, y_test):
 
     x_train /= 255
     x_test /= 255
+
+    extra_x_train, extra_y_train = add_external()
+    x_train, y_train = np.vstack([x_train, extra_x_train]), np.concatenate([y_train, extra_y_train])
 
     # full_x = None
     # full_y = None

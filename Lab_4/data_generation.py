@@ -18,7 +18,8 @@ def get_input_timeseries(num_of_timesteps: int) -> np.array:
     for t in range(1, num_of_timesteps + 1):
         y = np.concatenate([y, func(y[-1], alpha=alpha, beta=beta, t=t)])
 
-    return y
+    max = np.max(y)
+    return y/max
 
 
 if __name__ == '__main__':

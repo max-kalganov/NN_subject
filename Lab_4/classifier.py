@@ -1,11 +1,12 @@
 from os.path import join
 
 import pandas as pd
+from tensorflow.keras.layers import Activation
+from tensorflow.keras.utils import get_custom_objects
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras import Sequential
 from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import Dense
-from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot as plt
 import numpy as np
 # import TensorBoard as tb
@@ -14,17 +15,25 @@ from tensorboard.program import TensorBoard
 from data_generation import get_input_timeseries
 
 
+def custom_activation(x):
+    return 1 / x
+
+
+get_custom_objects().update({'custom_activation': Activation(custom_activation)})
+
+
 class Classifier:
     def __init__(self):
         self.classif = Sequential()
 
         self.classif.add(Dense(20,
-                               activation='sigmoid',
+                               activation='relu',
                                kernel_initializer='random_normal',
                                input_dim=1))
+        # self.classif.add(Activation(custom_activation, name='SpecialActivation'))
 
         self.classif.add(Dense(20,
-                               activation='sigmoid',
+                               activation='relu',
                                kernel_initializer='random_normal',
                                input_dim=20))
 
@@ -34,19 +43,19 @@ class Classifier:
                                input_dim=20))
 
         self.classif.add(Dense(1,
-                               activation='relu',
+                               activation='sigmoid',
                                kernel_initializer='random_normal',
                                input_dim=20))
 
-        self.classif.compile(optimizer='adam', loss=MeanSquaredError(), metrics=['accuracy'])
+        self.classif.compile(optimizer='Nadam', loss=MeanSquaredError(), metrics=["mean_squared_error"])
 
     def train(self, x_train, y_train):
-        batch_size = 10
+        batch_size = 1000
 
         self.classif.fit(x_train,
                          y_train,
                          batch_size=batch_size,
-                         epochs=100,
+                         epochs=5000,
                          shuffle=True)
         return self.classif.evaluate(x_train, y_train)
 
@@ -65,13 +74,14 @@ class Classifier:
 
 def test(classif: Classifier, x_test, y_test):
     y_pred = classif.test(x_test)
-    cm = confusion_matrix(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))
-    t_pos = cm[0, 0]
-    t_neg = cm[1, 1]
-    f_pos = cm[0, 1]
-    f_neg = cm[1, 0]
-    test_acc = (t_pos + t_neg)/(t_pos + t_neg + f_pos + f_neg)
-    print(f"test accuracy = {test_acc}")
+    y_pred = y_pred.reshape((y_pred.shape[0],))
+    print(f"mse on test = {np.mean((y_test - y_pred)**2)}")
+
+
+def get_full_dataset():
+    y = get_input_timeseries(100)
+    t = np.arange(100 * 100 + 1)
+    return t, y
 
 
 def get_dataset():
@@ -88,17 +98,42 @@ def get_dataset():
     #        (x_test.reshape(x_test.shape[0], 1), y_test.reshape(y_test.shape[0], 1))
 
 
-
 def train_and_test():
     (x_train, y_train), (x_test, y_test) = get_dataset()
-    classif = Classifier()
-    loss, acc = classif.train(x_train, y_train)
+    # x_train = np.arange(1000).astype(float)
+    # y_train = 1/x_train
+    # x_test = np.arange()
 
-    print(f"\ntraining results for dataset:\nloss = {loss}\naccuracy = {acc}\n")
+    classif = Classifier()
+    loss, mse = classif.train(x_train, y_train)
+
+    print(f"\ntraining results for dataset:\nloss = {loss}\nmse = {mse}\n")
     classif.save()
 
     test(classif, x_test, y_test)
 
 
+def load_and_test():
+    (x_train, y_train), (x_test, y_test) = get_dataset()
+
+    classif = Classifier()
+    classif.load()
+
+    test(classif, x_test, x_train)
+
+
+def load_and_show():
+    x, y = get_full_dataset()
+    cl = Classifier()
+    cl.load()
+    y_pred = cl.test(x)
+
+    plt.plot(y)
+    plt.plot(y_pred)
+    plt.show()
+
+
 if __name__ == '__main__':
-    train_and_test()
+    load_and_show()
+    # load_and_test()
+    # train_and_test()
